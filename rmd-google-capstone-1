@@ -1,0 +1,208 @@
+---
+title: "Google Capstone Case Study 1"
+author: "Prateek Srivastava"
+date: "2023-02-03"
+output: html_document
+---
+
+# Ask
+
+**About Cyclistic**
+
+A bike-share program that features more than 5,800 bicycles and 600 docking stations. Cyclistic sets itself apart by also offering reclining bikes, hand tricycles, and cargo bikes, making bike-share more inclusive to people with disabilities and riders who can’t use a standard two-wheeled bike. The majority of riders opt for traditional bikes; about 8% of riders use the assistive options. Cyclistic users are more likely to ride for leisure, but about 30% use them to commute to work each day.
+
+**Stakeholders**
+
+* **Lily Moreno:** The director of marketing
+* **Cyclistic marketing analytics team**
+* **Cyclistic executive team** 
+
+**Key Questions**
+
+Three questions that will guide the future marketing program:
+
+1. How do annual members and casual riders use Cyclistic bikes differently?
+
+2. Why would casual riders buy Cyclistic annual memberships?
+
+3. How can Cyclistic use digital media to influence casual riders to become members?
+
+**In this case study we will be focusing on the first question**
+
+# Prepare
+
+**Verifying Data Integrity**
+
+* The data has been provided by the internal company servers and is vetted by the company
+
+* We are using only the last year that is Jan 22- Dec 22 data for analysis
+
+# Process
+
+* Load all the necessary packages in Rstudio
+
+```{r loading packages}
+library(dplyr)
+library(readr)
+library(tidyverse)
+library(ggplot2)
+library(lubridate)
+```
+
+* Set the default working directory to the folder where the input files are stored
+
+```{r set the working directory}
+setwd("~/Divvy_2022")
+```
+
+
+* Upon inspecting the csv it was found that the column names are same and values present in the respective columns are belonging to the respective data points hence, these csv files can be aggregated into one single data frame for further analysis.
+
+* There are some datetime values that are of character type and some of datetime type. We have to convert all the date values into the datetime format
+
+* Read all the csv files and combine them all in one single dataframe
+* add the columns for ride_time and day_of_ride in the dataframe
+
+```{r reading files and creating a singe dataframe}
+df <-
+  list.files(path = 'C://Users//ayush//Documents//Divvy_2022//', pattern = "*.csv") %>% 
+  map_df(~read_csv(.))
+df
+  
+```
+
+* Inserting the ride_time and day_of_week columns in the dataframe
+
+```{r insert calculated columns}
+df$ride_time<-df$ended_at-df$started_at 
+df$day_of_ride<-wday(df$started_at, label=TRUE, abbr=FALSE)
+df$month_of_ride<-format(as.Date(df$started_at, format="%Y-%m-%d"),"%m")
+```
+
+* Viewing the attributes of the combined dataset using the head and str functions
+
+```{r viewing the dataset}
+head(df)
+str(df)
+```
+
+* Upon Inspecting the dataframe we observe that there are certain negative values for the ride_time column that we have created earlier
+
+```{r check for negative values}
+df1<-df %>% filter(ride_time<0)
+head(df1)
+```
+
+* As the ride time cannot be zero or negative hence we will filter the data and store it in the original dataframe
+
+```{r filter out the negative values}
+df<-df %>% filter(ride_time>0)
+head(df)
+```
+
+* Now we have clean aggregated data in a single dataframe. Proceeding to the next step i.e. Analyze
+
+# Analyze
+
+* We will be creating new dataframes containing different analysis from the original one
+
+* Mean ride time on the Weekdays
+
+```{r mean ride time on the weekday}
+df1<-df %>% 
+  group_by(day_of_ride) %>% 
+  summarize(ride_time=mean(ride_time))
+df1
+```
+
+* User type, weekday and Mean ride time
+
+```{r User type, weekday and Mean ride time}
+df2<-df %>%
+  group_by(member_casual,day_of_ride) %>% 
+  summarize(number_of_rides=n(),ride_time=mean(ride_time))
+df2
+```
+
+* Mean ride time of the user type
+
+```{r Mean ride time of the user type}
+df3<-df %>%
+  group_by(member_casual) %>% 
+  summarize(ride_time=mean(ride_time))
+df3
+```
+
+* Number of rides per month along with user type
+
+```{r Number of rides per month along with user type}
+df4<-df %>%
+  group_by(member_casual,month_of_ride) %>% 
+  summarize(number_of_rides=n())
+df4
+```
+
+* Number of rides per week along with user type
+
+```{r Number of rides per week along with user type}
+df5<-df %>%
+  group_by(member_casual,day_of_ride) %>% 
+  summarize(number_of_rides=n())
+df5
+```
+# Share
+
+The below visualizations are made by using the analysis we have done in the last step
+
+* **Average ride time on weekdays**
+
+```{r Viz.1}
+ggplot(data=df1,aes(x=day_of_ride,y=ride_time,fill=day_of_ride))+geom_col()+
+  labs(title = "Average ride duration pattern in a week", x = 'Day of the week', y = 'Average ride duration in sec', fill = 'Day of the week')
+
+```
+
+* **Average ride time on weekdays as per User type**
+
+```{r Viz.2}
+ggplot(data=df2)+geom_col(mapping=aes(x=day_of_ride,member_casual, y=ride_time,fill=member_casual), position = 'dodge')+
+  labs(title = "User type comparison of the average ride duration per weekday", x = 'Weekday', y = 'Average ride duration in sec', fill = 'Usertype')
+
+```
+
+* **Average ride time as per User type**
+
+```{r Viz.3}
+ggplot(data=df3)+geom_col(mapping=aes(x=member_casual, y=ride_time, fill=member_casual), position = 'dodge')+
+  labs(title = "User type comparison of the annual average ride duration", x = 'Usertype', y = 'Average ride duration in sec', fill = 'Usertype')
+
+```
+
+* **Monthly comparison of the number of rides for different User types**
+
+```{r Viz.4}
+ggplot(data=df4)+geom_col(mapping=aes(x=month_of_ride, y=number_of_rides, fill=member_casual), position = 'dodge')+
+  labs(title = "Monthly Number of rides taken by different User types", x = 'Month', y = 'Number of rides', fill = 'Usertype')
+
+```
+
+* **Weekday comparison of the number of rides for different User types**
+
+```{r Viz.5}
+ggplot(data=df5)+geom_col(mapping=aes(x=day_of_ride, y=number_of_rides, fill=member_casual), position = 'dodge')+
+  labs(title = "Weekly Number of rides taken by different User types", x = 'Month', y = 'Number of rides', fill = 'Usertype')
+
+```
+
+
+# Act
+
+**The key findings and recommendations are as below**
+
+* Weekends see a very high ride duration and Number of bookings
+
+* The casual members are taking more number of rides and longer ride duration
+
+* The subscribers tend to take more number of rides on the weekdays and throughout the Year
+
+* Recommendation: Cyclist should launch a marketing campaign revolving around benefits that come with the subscription of the service like discount offers on purchase, discount offers on ride time, discounts on continuation of the membership etc. This would help convert more casual riders towards the subscription model
